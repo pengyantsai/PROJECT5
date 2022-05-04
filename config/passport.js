@@ -1,19 +1,46 @@
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20");
 const User = require("../models/user-model");
+const LocalStrategy = require("passport-local");
+const bcrypt = require("bcrypt");
 
 passport.serializeUser(function (user, done) {
   console.log("serializing user now");
-  done(null, user._id);
+  return done(null, user._id);
 });
 
 passport.deserializeUser(function (_id, done) {
   console.log("deserializing user now");
   User.findById({ _id }).then(function (user) {
     console.log("found user");
-    done(null, user);
+    return done(null, user);
   });
 });
+
+passport.use(
+  new LocalStrategy((username, password, done) => {
+    console.log(username, password);
+    User.findOne({ email: username })
+      .then(async (user) => {
+        if (!user) {
+          return done(null, false);
+        }
+        await bcrypt.compare(password, user.password, function (err, result) {
+          if (err) {
+            return done(null, false);
+          }
+          if (!result) {
+            return done(null, false);
+          } else {
+            return done(null, user);
+          }
+        });
+      })
+      .catch((err) => {
+        return done(null, false);
+      });
+  })
+);
 
 passport.use(
   new GoogleStrategy(
@@ -28,7 +55,7 @@ passport.use(
       User.findOne({ googleID: profile.id }).then((foundUser) => {
         if (foundUser) {
           console.log("exist");
-          done(null, foundUser);
+          return done(null, foundUser);
         } else {
           new User({
             name: profile.displayName,
@@ -38,7 +65,7 @@ passport.use(
             .save()
             .then((newUser) => {
               console.log("New user created");
-              done(null, newUser);
+              return done(null, newUser);
             });
         }
       });

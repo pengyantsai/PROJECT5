@@ -16,25 +16,42 @@ router.get("/logout", (req, res) => {
   res.redirect("/");
 });
 
+router.post(
+  "/login",
+  passport.authenticate("local", {
+    failureRedirect: "/auth/login",
+    failureFlash: "Wrong email or password.",
+  }),
+  (req, res) => {
+    if (req.session.returnTo) {
+      let newPath = req.session.returnTo;
+      req.session.returnTo = "";
+      res.redirect(newPath);
+    } else {
+      res.redirect("/profile");
+    }
+  }
+);
+
 router.post("/signup", async (req, res) => {
-  console.log(req.body);
   let { name, email, password } = req.body;
+  //check if the data is already in db
   const emailExist = await User.findOne({ email });
   if (emailExist) {
-    return res.status(400).send("Email already exists");
+    req.flash("error_msg", "Email has already been registered.");
+    res.redirect("/auth/signup");
   }
 
   const hash = await bcrypt.hash(password, 10);
   password = hash;
   let newUser = new User({ name, email, password });
   try {
-    const savedUser = await newUser.save();
-    res.status(200).send({
-      msg: "User saved",
-      savedObj: savedUser,
-    });
+    await newUser.save();
+    req.flash("success_msg", "Registration succeeds. You can login now.");
+    res.redirect("/auth/login");
   } catch (err) {
-    res.status(400).send(err);
+    req.flash("error_msg", err.errors.name.properties.message);
+    res.redirect("/auth/signup");
   }
 });
 
@@ -42,28 +59,17 @@ router.get(
   "/google",
   passport.authenticate("google", {
     scope: ["profile", "email"],
-    prompt: "select_account",
   })
 );
 
 router.get("/google/redirect", passport.authenticate("google"), (req, res) => {
-  res.redirect("/profile");
+  if (req.session.returnTo) {
+    let newPath = req.session.returnTo;
+    req.session.returnTo = "";
+    res.redirect(newPath);
+  } else {
+    res.redirect("/profile");
+  }
 });
 
 module.exports = router;
-
-/*      
-    <br />
-    <br />
-    <br />
-    <% if (posts.length > 0) { %> <% for (let i = 0; i < posts.length; i++) { %>
-    <div class="card" style="width: 18rem">
-      <div class="card-body">
-        <h5 class="card-title"><%= posts[i].title %></h5>
-        <p class="card-text"><%= posts[i].content %></p>
-        <a href="#" class="btn btn-primary"><%= posts[i].date %> </a>
-      </div>
-    </div>
-    <% } %> <% } %>
-  </body>
-  */

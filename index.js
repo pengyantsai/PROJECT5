@@ -6,8 +6,9 @@ dotenv.config();
 const authRoute = require("./routes/auth-routes");
 const profileRoute = require("./routes/profile-routes");
 require("./config/passport");
-const cookieSession = require("cookie-session");
 const passport = require("passport");
+const session = require("express-session");
+const flash = require("connect-flash");
 
 mongoose
   .connect(process.env.DB_CONNECT, {
@@ -27,12 +28,24 @@ app.set("view engine", "ejs");
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(
-  cookieSession({
-    keys: [process.env.SECRET],
+  session({
+    secret: process.env.SECRET,
+    resave: false,
+    saveUninitialized: true,
   })
 );
+
 app.use(passport.initialize());
 app.use(passport.session());
+
+app.use(flash());
+app.use((req, res, next) => {
+  res.locals.success_msg = req.flash("success_msg");
+  res.locals.error_msg = req.flash("error_msg");
+  res.locals.error = req.flash("error");
+  next();
+});
+
 app.use("/auth", authRoute);
 app.use("/profile", profileRoute);
 

@@ -12,7 +12,7 @@ const userSchema = new mongoose.Schema({
   thuumbnail: { type: String },
   //local login
   email: { type: String },
-  password: { type: String, maxlength: 1024 },
+  password: { type: String, maxlength: 1024, minlength: 6 },
 });
 
 module.exports = mongoose.model("User", userSchema);
